@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<queries>
+    <aQuery>
+        <all-regions/>
+        <supplyDemandQuery title = "food demand">
+            <axis1 name = "input">input[@name]</axis1>
+            <axis2 name = "Year">demand-physical[@vintage]</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "demand"
+                group = "false"
+                sumAll = "false">gcam-consumer[contains(@name, 'FoodDemand')]//*[@type='input']/demand-physical/node()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <supplyDemandQuery title = "food demand prices">
+            <axis1 name = "input">input[@name]</axis1>
+            <axis2 name = "Year">price-paid[@vintage]</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "price"
+                group = "false"
+                sumAll = "false">gcam-consumer[contains(@name, 'FoodDemand')]//*[@type='input']/price-paid/node()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <supplyDemandQuery title = "food demand per capita">
+            <axis1 name = "input">input[@name]</axis1>
+            <axis2 name = "Year">demand-percap[@year]</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "demand per cap"
+                group = "false"
+                sumAll = "false">gcam-consumer[contains(@name,'FoodDemand')]//*[@type='input']/demand-percap/node()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <gdpQueryBuilder title="GDP per capita PPP by region">
+            <axis1 name="region">region</axis1>
+            <axis2 name="Year">nationalAccount[@year]</axis2>
+            <xPath buildList="true" dataName="gdp-per-capita-ppp" group="false" sumAll="false">nationalAccount/account[@name = 'gdp-per-capita-ppp']/node()</xPath>
+            <comments/>
+        </gdpQueryBuilder>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <demographicsQuery title = "population by region">
+            <axis1 name = "region">region</axis1>
+            <axis2 name = "Year">populationMiniCAM</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "total-population"
+                group = "false"
+                sumAll = "false">demographics/populationMiniCAM/total-population/node()</xPath>
+            <comments/>
+        </demographicsQuery>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <supplyDemandQuery title = "food consumption by type (specific)">
+            <axis1 name = "technology">technology</axis1>
+            <axis2 name = "Year">physical-output[@vintage]</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "output"
+                group = "false"
+                sumAll = "false">
+                *[@type='sector' (:collapse:) and (@name='FoodDemand_Staples' or @name='FoodDemand_NonStaples')]//
+                *[@type='subsector']//*[@type='technology']/
+                *[@type='output' (:collapse:)]/physical-output/node()
+            </xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+      <supplyDemandQuery title="food consumption by type (general)">
+         <axis1 name="sector">sector</axis1>
+         <axis2 name="Year">physical-output[@vintage]</axis2>
+         <xPath buildList="true"
+                dataName="output"
+                group="false"
+                sumAll="false">
+                *[@type='sector' and (@name='FoodDemand_Staples' or @name='FoodDemand_NonStaples')]//
+                *[@type='output']/physical-output/node()
+         </xPath>
+         <comments/>
+      </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+        <all-regions/>
+        <supplyDemandQuery title = "prices by sector">
+            <axis1 name = "sector">sector</axis1>
+            <axis2 name = "Year">cost</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "Price"
+                group = "false"
+                sumAll = "false">*[@type = 'sector']/cost/text()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+        <aQuery>
+        <demographicsQuery title = "subregional population">
+            <axis1 name = "region">region</axis1>
+            <axis2 name = "Year">subregional-population</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "subregional-population"
+                group = "false"
+                sumAll = "false">gcam-consumer[contains(@name,'FoodDemand')]/subregional-population/node()</xPath>
+            <comments/>
+        </demographicsQuery>
+    </aQuery>
+    <aQuery>
+        <demographicsQuery title = "subregional income">
+            <axis1 name = "region">region</axis1>
+            <axis2 name = "Year">subregional-percapita-income</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "subregional-percapita-income"
+                group = "false"
+                sumAll = "false">gcam-consumer[contains(@name,'FoodDemand')]/subregional-percapita-income/node()</xPath>
+            <comments/>
+        </demographicsQuery>
+    </aQuery>
+    <aQuery>
+        <supplyDemandQuery title = "meat and dairy prices">
+            <axis1 name = "sector">sector</axis1>
+            <axis2 name = "Year">cost</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "output"
+                group = "false"
+                sumAll = "false">
+                *[@type='sector' and
+                (@name='Beef' or @name='SheepGoat' or @name='Pork' or @name='Dairy' or @name='Poultry')]/
+                cost/text()
+            </xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+        <supplyDemandQuery title = "ag commodity prices">
+            <axis1 name = "sector">sector</axis1>
+            <axis2 name = "Year">cost</axis2>
+            <xPath
+                buildList = "true"
+                dataName = "price"
+                group = "false"
+                sumAll = "false">*[@type='sector' and (local-name()='AgSupplySector')]/cost/text()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+        <aQuery>
+        <supplyDemandQuery title="meat and dairy production by type">
+            <axis1 name="sector">sector</axis1>
+            <axis2 name="Year">physical-output[@vintage]</axis2>
+            <xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector' and
+                      (@name='Beef' or @name='SheepGoat' or @name='Pork' or @name='Dairy' or @name='Poultry')]//
+                      *[@type='output']/physical-output/node()</xPath>
+            <comments/>
+        </supplyDemandQuery>
+    </aQuery>
+        <aQuery>
+        <supplyDemandQuery title="ag production by crop type">
+            <axis1 name="sector">sector[@name]</axis1>
+            <axis2 name="Year">physical-output[@vintage]</axis2>
+            <xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector' and (local-name()='AgSupplySector')]//
+                  output-primary/physical-output/node()</xPath>
+            <comments>primary output only (no residue biomass)</comments>
+        </supplyDemandQuery>
+    </aQuery>
+        <aQuery>
+        <marketQuery title="supply of all markets">
+            <axis1 name="market">market</axis1>
+            <axis2 name="Year">market</axis2>
+            <xPath buildList="true" dataName="price" group="false" sumAll="false">Marketplace/market[true()]/supply/node()</xPath>
+            <comments/>
+        </marketQuery>
+    </aQuery>
+    <aQuery>
+      <marketQuery title="demand of all markets">
+            <axis1 name="market">market</axis1>
+            <axis2 name="Year">market</axis2>
+            <xPath buildList="true" dataName="price" group="false" sumAll="false">Marketplace/market[true()]/demand/node()</xPath>
+            <comments/>
+      </marketQuery>
+    </aQuery>
+    <aQuery>
+      <supplyDemandQuery title="outputs by tech">
+            <axis1 name="technology">technology[@name]</axis1>
+            <axis2 name="Year">physical-output[@vintage]</axis2>
+            <xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector']/*[@type='subsector']/*[@type='technology']/*[@type='output']/physical-output/node()</xPath>
+            <comments/>
+      </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+      <supplyDemandQuery title="inputs by tech">
+            <axis1 name="input">input</axis1>
+            <axis2 name="Year">demand-physical[@vintage]</axis2>
+            <xPath buildList="true" dataName="input" group="false" sumAll="false">*[@type='sector']/*[@type='subsector']/*[@type='technology']/*[@type='input']/demand-physical/node()</xPath>
+            <comments/>
+      </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+      <supplyDemandQuery title="demand balances by crop commodity">
+            <axis1 name="sector">sector</axis1>
+            <axis2 name="Year">demand-physical[@vintage]</axis2>
+            <xPath buildList="true"
+                   dataName="input"
+                   group="false"
+                   sumAll="false">
+              *[@type='sector']//*[@type='input' and
+                    (@name='regional corn' or @name='regional fibercrop' or @name='regional fruits' or @name='regional legumes'
+                      or @name='regional misccrop' or @name='regional nuts_seeds' or @name='regional oilcrop' or @name='regional othergrain'
+                      or @name='regional palmfruit' or @name='regional rice' or @name='regional root_tuber'
+                      or @name='regional soybean' or @name='regional sugarcrop' or @name='regional vegetables' or @name='regional wheat'
+                      or @name='FodderGrass' or @name='FodderHerb' or @name='Forest' or @name='Pasture')]/
+                      demand-physical/node()
+           </xPath>
+           <comments/>
+      </supplyDemandQuery>
+    </aQuery>
+    <aQuery>
+      <supplyDemandQuery title="demand balances by meat and dairy commodity">
+            <axis1 name="sector">sector</axis1>
+            <axis2 name="Year">demand-physical[@vintage]</axis2>
+            <xPath buildList="true"
+                   dataName="input"
+                   group="false"
+                   sumAll="false">
+              *[@type='sector']//*[@type='input' and
+                    (@name='Beef' or @name='Pork' or @name='Poultry' or @name='SheepGoat' or @name='OtherMeat_Fish' or @name ='Dairy')]/
+                    demand-physical/node()</xPath>
+            <comments/>
+      </supplyDemandQuery>
+    </aQuery>
+
+  </queries>
