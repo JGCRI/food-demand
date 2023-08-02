@@ -1,41 +1,46 @@
-[![DOI](https://zenodo.org/badge/265119113.svg)](https://zenodo.org/badge/latestdoi/265119113)
+_your zenodo badge here_
 
-# metarepo
-Template repository for a single point of access meta-repository to reproduce an experiment
+# Waldhoff_etal_2023_journal
 
-## Purpose
-A meta-repository creates a single point of access for someone to find all of the components that were used to create a published work for the purpose of reproducibility.  This repository should contain references to all minted data and software as well as house any ancillary code used to transform the source data, create figures for your publication, conduct the experiment, and / or execute the contributing software.
+**Title**
 
-## Using the template
-Simply click `Use this template` on the main repository page (shows up to the left of `Clone or download`) and fill in your `Repository name`, the `Description`, select whether you want the repository to be `Public` or `Private`, and leave `Include all branches` unchecked.
+Stephanie Waldhoff<sup>1\*</sup>, Leeya Pressburger<sup>1</sup>, Ellie Lochner<sup>1</sup>, Ryna Cui<sup>2</sup>, Kanishka Narayan<sup>1</sup>, Jon Sampedro<sup>3</sup>
 
-## Naming your meta-repository
-The following naming conventions should be used when naming your repository:  
-- Single author:  `lastname_year_journal`
-- Multi author:  `lastname-etal_year_journal`
-- Multiple publications in the same journal:  `lastname-etal_year-letter_journal` (e.g., `human-etal_2020-b_nature`)
+<sup>1 </sup> Pacific Northwest National Laboratory, Joint Global Change Research Institute, USA <br>
+<sup>2 </sup> University of Maryland, School of Public Policy, USA <br>
+<sup>3 </sup> Basque Center for Climate Change, Spain
 
-## Customize your `.gitignore` file
-A general `.gitignore` for use with Python or R development is included.  However, you may wish to customize this to the needs of your project.  The `.gitignore` file lets Git know what to push to the remote repository and what needs to be ignored and stay local.
+\* corresponding author:  stephanie.waldhoff@pnnl.gov
 
-## Suggestions
-- Don't bog down your repository with a bunch of raw data.  Instead archive and mint a DOI for your data and provide the reference in this repository with instructions for use.
-- Create complete and tested documentation for how to use what is in this repository to reproduce your experiment.
+## Abstract
+Forthcoming
 
-## Creating a minted release for your meta-repository
-It is important to version and release your meta-repository as well due to changes that may occur during the publication review process.  If you do not know how to conduct a release on GitHub when linked with Zenodo, please contact chris.vernon@pnnl.gov to get set up.  
+## Journal reference
+Forthcoming
 
-## The meta-repository markdown template
-A sample meta-repository template is provided in this repository in the file `metarepo_template.md`.  
+## Code reference
+Zenodo forthcoming
 
-To use it, do the following:
-1. Create the template repository as mentioned above in [Using the template](#using-the-template)
-2. Clone your new repository to you local machine
-3. Change directories into your new meta-repository directory you just cloned
-4. Run `git rm README.md` to delete this file (`README.md`) and commit it using `git commit -m 'remove instructions'`
-5. Rename `metarepo_template.md` as `README.md`
-6. Run `git add README.md` to stage the new file that will show up on load in your remote GitHub repository
-7. Run `git rm metarepo_template.md` to remove the original template
-8. Run `git commit -m 'set up new template as readme'` to set the changes
-9. Run `git push` to send the changes to your remote GitHub repository
-10. Modify the `README.md` file to represent your experiement and use the `add`, `commit`, `push` workflow to update your remote repository
+## Data reference
+
+### Input data
+Update when we have it
+Reference for each minted data source for your input data.  For example:
+
+Human, I.M. (2021). My input dataset name [Data set]. DataHub. https://doi.org/some-doi-number
+
+## Contributing modeling software
+| Model | Version | Repository Link | DOI |
+|-------|---------|-----------------|-----|
+| GCAM | 7.0 | https://github.com/JGCRI/gcam-core | https://zenodo.org/record/8010145 |
+
+## Reproduce my experiment
+
+1. You will need to download the databases from (insert Zenodo here when we have it) to a folder called "databases"
+2. Install necessary packages
+3. Run scripts - data processing and visualization both happen within the same script. Figures will be saved to a "figures" directory.
+
+| Script Name | Description |
+| --- | --- | 
+| `food_security_metrics.R` | Script to generate food security metrics, data, and figures | 
+| `food_demand_summary.R` | Script to generate generic figures for food demand multiple consumers work| 
