@@ -1,5 +1,5 @@
 # Script to compute several FAO food security indicators
-# LP 2023
+# Leeya Pressburger 2023
 
 # Setup ------------------------------------------------------------------------
 # Load packages
@@ -14,24 +14,33 @@ library(tidytext)
 library(pals)
 library(forcats)
 
-# Load GCAM results:
-prj <- loadProject('./dat/food_security.dat')
-
-# Or re-read databases
-read_dbs <- 0 # 1 to read, 0 to skip
+# Read databases...
+read_dbs <- 1 # 1 to read, 0 to skip
 
 if(read_dbs) {
    conn_single <- localDBConn('./databases', 'db_single_consumer')
    conn_single_2p6 <- localDBConn('./databases', 'db_single_consumer_2p6')
 
-   conn_multiple <- localDBConn('./databases', 'db_multiple_consumers_new')
+   conn_multiple <- localDBConn('./databases', 'db_multiple_consumers')
    conn_multiple_2p6 <- localDBConn('./databases', 'db_multiple_consumers_2p6')
 
+   conn_trade_high <- localDBConn('./databases', 'db_trade_high')
+   conn_trade_default <- localDBConn('./databases', 'db_trade_default')
+   conn_trade_low <- localDBConn('./databases', 'db_trade_low')
+
    prj <- addScenario(conn_single, './dat/food_security.dat', 'SingleConsumer', './scripts and queries/food_security_queries.xml', clobber = TRUE)
-   prj <- addScenario(conn_single_2p6, './dat/food_security_test.dat', 'SingleConsumer_2p6', './scripts and queries/food_security_queries.xml', clobber = TRUE)
+   prj <- addScenario(conn_single_2p6, './dat/food_security.dat', 'SingleConsumer_2p6', './scripts and queries/food_security_queries.xml', clobber = TRUE)
 
    prj <- addScenario(conn_multiple, './dat/food_security.dat', 'MultipleConsumers', './scripts and queries/food_security_queries.xml', clobber = TRUE)
    prj <- addScenario(conn_multiple_2p6, './dat/food_security.dat', 'MultipleConsumers_2p6', './scripts and queries/food_security_queries.xml', clobber = TRUE)
+
+   prj <- addScenario(conn_trade_high, './dat/food_security.dat', 'HighTrade', './scripts and queries/food_security_queries.xml', clobber = TRUE)
+   prj <- addScenario(conn_trade_default, './dat/food_security.dat', 'DefaultTrade', './scripts and queries/food_security_queries.xml', clobber = TRUE)
+   prj <- addScenario(conn_trade_low, './dat/food_security.dat', 'LowTrade', './scripts and queries/food_security_queries.xml', clobber = TRUE)
+
+} else {
+  # ... or load GCAM results
+  prj <- loadProject('./dat/food_security.dat')
 }
 
 # Define variables -------------------------------------------------------------
@@ -40,22 +49,32 @@ all_regions <- unique(prj$MultipleConsumers$`food demand`$region)[-31]
 regions_to_plot <- all_regions
 figure_start_year <- 2000
 
+# Organize for plotting
 scenario_order = c("SingleConsumer",
                    "SingleConsumer_2p6",
                    "MultipleConsumers",
-                   "MultipleConsumers_2p6")
+                   "MultipleConsumers_2p6",
+                   "HighTrade",
+                   "DefaultTrade",
+                   "LowTrade")
 
 scen_linetype = c("SingleConsumer" = "solid",
                   "SingleConsumer_2p6" = "dashed",
                   "MultipleConsumers" = "solid",
-                  "MultipleConsumers_2p6" = "dashed")
+                  "MultipleConsumers_2p6" = "dashed",
+                  "HighTrade" = "dashed",
+                  "DefaultTrade" = "solid",
+                  "LowTrade" = "dotted")
 
 scen_colors = c("SingleConsumer" = "#00008B",
-                "SingleConsumer_2p6" = "#A3A3FF",
+                "SingleConsumer_2p6" = "#00008B",
                 "MultipleConsumers" = "#01665e",
-                "MultipleConsumers_2p6" = "#B8FEF9")
+                "MultipleConsumers_2p6" = "#01665e",
+                "HighTrade" = "#A3A3FF",
+                "DefaultTrade" = "#A3A3FF",
+                "LowTrade" ="#A3A3FF")
 
-# Specify colors and line sizes
+# Specify colors and line sizes for deciles
 colors_10 <- c(brewer.pal(n=9, "Set1"), "#66C2A5", "#000000") # plus black
 sizes_10 <- c(0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.7)
 
@@ -72,7 +91,7 @@ for(i in scenario_order){prj_list[[i]] <- prj[[i]]}
 prj <- prj_list
 rm(prj_list)
 
-# Compute metrics --------------------------------------------------------------
+# Define constants and commonly used items -------------------------------------
 # Map countries to GCAM regions
 id_to_region <- read.csv("./input/gcam_id_to_region.csv") %>%
   rename(GCAM_region_ID = "ï..GCAM_region_ID")
@@ -86,6 +105,7 @@ country_to_id <- country_id %>%
   select(-1) %>%
   rename(region = country_name)
 
+# Get GCAM regions and SSP population data
 gcam_regions <- read.csv("./input/iso_GCAM_regID.csv", skip = 6)
 ssp_data <- read.csv("./input/SSP2 population by demographic.csv", skip = 1)
 
@@ -128,7 +148,7 @@ fd <- getQuery(prj, "food demand") %>%
   group_by(scenario, region, gcam.consumer, Units, year, nodeinput) %>%
   summarize(Total = sum(value))
 
-# Join with pop and GDP info
+# Join with pop and GDP info to get food demand per capita
 fd_pc <- fd %>%
   left_join(gdp_shares_groups, by = c("scenario", "region", "year", "gcam.consumer")) %>%
   left_join(pop_groups, by = c("scenario", "region", "year", "gcam.consumer")) %>%
@@ -149,6 +169,8 @@ staples_nonstaples <- getQuery(prj, "food demand") %>%
   left_join(fd)
 
 ## Dietary energy supply =======================================================
+# Units: kcal/capita/day
+
 # By region
 # Get total consumption in calories
 dietary_energy_supply <- getQuery(prj, "food consumption by type (general)") %>%
@@ -161,7 +183,7 @@ dietary_energy_supply <- getQuery(prj, "food consumption by type (general)") %>%
   mutate(value = (value * 1e12) / (population * 365),
          units = "kcal/capita/day")
 
-# Total consumption by decile
+# Total DES by decile
 dietary_energy_supply_decile <- fd_pc %>%
   filter(scenario %in% c("MultipleConsumers", "MultipleConsumers_2p6"))
 
@@ -207,6 +229,8 @@ share_staples_agg <- share_diet_staples_decile %>%
 write.csv(share_staples_agg, "./aggregation/share_staples_in_total.csv")
 
 ## Share of food expenditure of the poor =======================================
+# Method 1: use GCAM to calculate prices * consumption over income
+# We are off by a factor of ten here - CHECK THIS
 # Get food prices - note that these are producer prices, not consumer
 prices <- getQuery(prj, "food demand prices") %>%
   filter(year >= figure_start_year, region %in% regions_to_plot) %>%
@@ -214,44 +238,67 @@ prices <- getQuery(prj, "food demand prices") %>%
   rename(prices = value,
          gcam.consumer = `gcam-consumer`) %>%
   mutate(gcam.consumer = if_else(gcam.consumer == "FoodDemand", "FoodDemand_RefConsumer", gcam.consumer),
-         prices = prices * 365, # convert from 2005$/Mcal/day to annual $2005/Mcal
-         Units = "2005$/Mcal",
+         prices = (prices * 1000), # Mcal -> kcal,
+         ### What is happening here that NonStaple prices are so high
+         #prices = case_when(input == "FoodDemand_NonStaples" ~ prices / 10, T ~ prices),
+         Units = "2005$/kcal", # No time value associated with price, no need to convert to annual
          input = case_when(input == "FoodDemand_NonStaples" ~ "NonStaples",
                            input == "FoodDemand_Staples" ~ "Staples",
                            T ~ input))
 
-consumption_shares <- getQuery(prj, "food demand") %>%
-  filter(year >= figure_start_year, region %in% regions_to_plot) %>%
+# Get consumption per capita
+consumption_ <- getQuery(prj, "food demand") %>%
+  filter(year >= figure_start_year) %>%
   rename(gcam.consumer = "gcam-consumer") %>%
   mutate(gcam.consumer = if_else(gcam.consumer == "FoodDemand", "FoodDemand_RefConsumer", gcam.consumer)) %>%
-  separate(input, into = c("drop", "input"), sep = "_") %>%
-  select(-nodeinput, -drop) %>%
-  mutate(value = value / 1e6, # convert from Pcal/yr to annual Mcal
-         Units = "Mcal") %>%
-  pivot_wider(names_from = "input", values_from = "value") %>%
-  pivot_longer(cols = c("Staples", "NonStaples"), names_to = "input", values_to = "consumption")
+  mutate(input = gsub("FoodDemand_", "", input)) %>%
+  pivot_wider(names_from = input, values_from = value) %>%
+  left_join(fd) %>%
+  left_join(gdp_shares_groups, by = c("scenario", "region", "year", "gcam.consumer")) %>%
+  left_join(pop_groups, by = c("scenario", "region", "year", "gcam.consumer")) %>%
+  pivot_longer(cols = c(Staples, NonStaples), names_to = "input", values_to = "consumption") %>%
+  mutate(total = (consumption * 1e12) / (365 * population),
+         Units = "kcal/capita/day") %>%
+  select(-Units.x, -Units.y, -Total, -nodeinput, -GDP_pc, -population)
 
-# Isolate income, convert from $1990 to $2005
+# Isolate income, convert from million $1990 to $2005
 incomes <- gdp_shares_groups %>%
-  mutate(GDP_pc = (gcamextractor::gdp_deflator(2005, 1990) * GDP_pc))
+  mutate(GDP_pc = (((gcamextractor::gdp_deflator(2005, 1990) * GDP_pc) * 1e6) / 365),
+         Units = "2005$/capita/day")
 
-# SUM_commodity(consumption_c * price_c) / income
-share_poor <- left_join(prices, consumption_shares,
+# Share of expenditure = SUM_commodity(consumption_c * price_c) / income
+share_poor <- left_join(prices, consumption_,
                         by = c("scenario", "region", "input", "year", "gcam.consumer"),
                         relationship = "many-to-many") %>%
   left_join(incomes, by = c("scenario", "region", "gcam.consumer", "year")) %>%
   mutate(numerator = consumption * prices) %>%
-  group_by(scenario, region, year, input, gcam.consumer) %>%
-  summarize(exp_share = numerator / GDP_pc,
-            percent = exp_share * 100) %>%
+  group_by(scenario, region, gcam.consumer, year, input) %>%
+  reframe(exp_share = numerator / GDP_pc,
+          percent = exp_share * 100) %>%
+  # Filter for the bottom 5 deciles
   filter(scenario %in% c("MultipleConsumers", "MultipleConsumers_2p6"),
          gcam.consumer %in% c("FoodDemand_Group1", "FoodDemand_Group2", "FoodDemand_Group3", "FoodDemand_Group4", "FoodDemand_Group5"))
 
+# Or, use this query to directly get the info - easier
+food_expenditure_shares <- getQuery(prj, "food demand shares from market") %>%
+  filter(!(scenario %in% c("SingleConsumer", "SingleConsumer_2p6"))) %>%
+  separate(market, into = c("region", "input", "param"), sep = "FoodDemand") %>%
+  separate(param, into = c("gcam.consumer", "param"), sep = "-budget") %>%
+  mutate(input = gsub("_", "", input),
+         gcam.consumer = gsub("_", "", gcam.consumer),
+         param = "budget-fraction-trial-supply") %>%
+  filter(gcam.consumer %in% c("Group1", "Group2", "Group3", "Group4", "Group5"))
+
 # Write outputs
-write.csv(share_poor, "./fs_metrics/share_food_exp_poor.csv")
+# write.csv(share_poor, "./fs_metrics/share_food_exp_poor.csv")
+write.csv(food_expenditure_shares, "./fs_metrics/food_expenditure_shares.csv")
 
 ## Average dietary supply adequacy =============================================
-### SSP2 demographic data processing ===========================================
+
+# We need to isolate population by sex and age for each region
+# First, we need to take the SSP data and process
+
+## SSP2 demographic data processing ===========================================
 # Read in SSP data, remove unneeded columns, join with country identifiers
 ssp_data_clean <- gcam_regions %>%
   select(-region_GCAM3, -GCAM_region_ID) %>%
@@ -359,6 +406,7 @@ adesa <- left_join(adesa_denominator, total_regional_calories) %>%
 
 # Method two
 # ADESA = DES/MDER
+# This gives us a percentage value for quick comparison with FAO
 regional_mder <- weighted_pop_sex_age %>%
   left_join(mder, by = "variable") %>%
   group_by(region) %>%
@@ -380,7 +428,7 @@ write.csv(adesa_method2, "./fs_metrics/average_des_adequacy_percent.csv")
 
 ## Macronutrients ==============================================================
 # Read in gcamdata file and change NAs to 0
-# This comes from module_aglu_L100.FAO_SUA_PrimaryEquivalent
+# This comes from module_aglu_L100.FAO_SUA_connection
 gcamdata_macro <- read.csv("./input/gcamdata_macronutrient.csv")
 gcamdata_macro[is.na(gcamdata_macro)] <- 0
 
@@ -392,7 +440,7 @@ gcamdata_macro[is.na(gcamdata_macro)] <- 0
 
 macronutrients <- gcamdata_macro %>%
   select(-1) %>%
-  mutate(calperg = calperg / 1000) %>% # convert to kcal)
+  mutate(calperg = calperg / 1000) %>% # convert to kcal
   rename(kcalperg = calperg,
          protein_per_100g = proteinperc,
          fat_per_100g = fatperc,
@@ -411,7 +459,8 @@ macronutrients$GCAM_region_ID <- as.numeric(macronutrients$GCAM_region_ID)
 consumption_cals <- getQuery(prj, "food consumption by type (specific)") %>%
   select(-4, -5) %>%
   filter(scenario == "SingleConsumer", year >= 2000) %>%
-  left_join(filter(staples_nonstaples, scenario == "SingleConsumer"), by = c("scenario", "region", "year")) %>%
+  left_join(filter(staples_nonstaples, scenario == "SingleConsumer"),
+            by = c("scenario", "region", "year")) %>%
   select(-7, -8, -9)
 
 # Share of staple commodities in staple calories (and total)
@@ -530,7 +579,6 @@ protein_oneconsumer <- consumption_by_commodity_decile %>%
           units = units,
           data = "FAO") %>%
   distinct()
-
 
 # Write outputs
 write.csv(protein_supply, "./fs_metrics/protein_supply_region.csv")
@@ -1239,7 +1287,7 @@ iron_supply_by_commodity <- consum_iron %>%
   mutate(commodity_cals = commodity_cals * 1e12, # convert Pcal to kcal
          Units = "kcal") %>%
   group_by(scenario, region, year, commodity, gcam.consumer) %>%
-  reframe(numerator = (mg_iron_per_kcal_comm * commodity_cals), # protein (g per kcal) * calories
+  reframe(numerator = (mg_iron_per_kcal_comm * commodity_cals), # iron (g per kcal) * calories
           denominator = population,
           iron_supply = numerator / (denominator * 365), # convert year to day
           units = "mg/capita/day") %>%
@@ -1248,7 +1296,7 @@ iron_supply_by_commodity <- consum_iron %>%
 # Total regional values
 iron_supply <- iron_supply_by_commodity %>%
   group_by(scenario, region, year, gcam.consumer) %>%
-  # Sum protein supply by commodity to get total protein supply for each region
+  # Sum iron supply by commodity to get total iron supply for each region
   reframe(iron_agg = sum(iron_supply),
           units = units) %>%
   distinct() %>%
@@ -1641,8 +1689,11 @@ ggsave(plot = kcal_perg_plot, "./figures/conversions/kcal_per_100g.jpg", height 
 # SUM_cerealgrains((imports - exports)/(production+imports-exports))
 # TODO check why this is so off from FAO
 
+# We likely can't calculate this accurately since production is not split up
+# by food vs non-food production
+
 # Consumption (MT)
-consumption <- getQuery(prj, "demand balances by crop commodity") %>%
+consumption_mt <- getQuery(prj, "demand balances by crop commodity") %>%
   filter(year >= figure_start_year,
          sector %in% c("FoodDemand_Staples", "FoodDemand_NonStaples"),
          input %in% c("regional wheat", "regional rice", "regional corn", "regional othergrain")) %>%
@@ -1671,13 +1722,18 @@ imports <- getQuery(prj, "outputs by tech") %>%
 imports[is.na(imports)] <- 0
 
 # Exports (MT) and all data
-exports <- left_join(consumption, production, by = c("scenario", "region", "year")) %>%
+exports <- left_join(consumption_mt, production, by = c("scenario", "region", "year")) %>%
   left_join(imports, by = c("scenario", "region", "year")) %>%
   filter(imports != "NA") %>%
   mutate(exports = production + imports - consumption)
 
 cereal_import_dep_ratio <- exports %>%
   mutate(cereal_ratio = ((imports  - exports) * 100) / (production + imports))
+
+# Method 2: regional production over regional consumption
+cereal <- left_join(production, consumption_mt) %>%
+  mutate(ratio = 1 - (production / consumption),
+         percent = ratio * 100)
 
 # Write outputs
 write.csv(cereal_import_dep_ratio, "./fs_metrics/cereal_import_dep_ratio.csv")
@@ -1765,6 +1821,7 @@ filter_weight_fao <- function(data) {
 
 # Write out csvs, do comparison in Excel
 ### ADESA ======================================================================
+# Read in data
 ADESA_fao <- read_fao_data("ADESA") %>%
   mutate(year = case_when(year == "2004-2006" ~ "2005",
                           year == "2009-2011" ~ "2010",
@@ -1776,8 +1833,10 @@ ADESA_fao <- read_fao_data("ADESA") %>%
 
 ADESA_fao$year <- as.numeric(ADESA_fao$year)
 
+# Filter and weight data
 ADESA_fao_filter <- filter_weight_fao(ADESA_fao)
 
+# Join with GCAM results, compute absolute and percent differences
 ADESA_valid <- adesa %>%
   filter(year %in% c(2010, 2015),
          scenario == "MultipleConsumers") %>%
@@ -1984,6 +2043,8 @@ percent_anemic_valid <- female_rep_iron %>%
   filter(GCAM_region_ID != "NA") %>%
   select(-number_of_deciles_below_iron, -number_of_females_below)
 
+write.csv(percent_anemic_valid, "./Validation/anemia.csv")
+
 ### Cereal import dependency ratio =============================================
 # Read in FAO data for comparison
 cereal_fao <- read_fao_data("Cereal import dependency ratio") %>%
@@ -1995,13 +2056,15 @@ cereal_fao <- read_fao_data("Cereal import dependency ratio") %>%
 
 cereal_fao$year <- as.numeric(cereal_fao$year)
 
+# Filter and weight data
 cereal_fao_filter <- filter_weight_fao(cereal_fao)
 
-cereal_valid <- left_join(cereal_import_dep_ratio,
+# Join with GCAM results
+cereal_valid <- left_join(cereal,
                           cereal_fao_filter, by = c("region", "year")) %>%
   filter(year %in% c(2010, 2015))  %>%
-  mutate(diff = regional_fao_value - cereal_ratio,
-         per_diff = ((regional_fao_value - cereal_ratio) / regional_fao_value) * 100)
+  mutate(diff = regional_fao_value - percent,
+         per_diff = ((regional_fao_value - percent) / regional_fao_value) * 100)
 
 write.csv(cereal_valid, "./Validation/cereal_import_dep_ratio_validation.csv")
 
@@ -2068,6 +2131,7 @@ staples_fao <- read_fao_data("Share of staples in total") %>%
 
 staples_fao$year <- as.numeric(staples_fao$year)
 
+# Filter and weight values
 staples_fao_filter <- filter_weight_fao(staples_fao)
 
 # MultipleConsumers
@@ -2651,8 +2715,8 @@ ggsave(plot = des_fig_no_single, filename = "./Validation/figures/des_valid_no_s
 ## Cereal import dep ratio =====================================================
 # GCAM values vs FAO
 cereal_plot <- cereal_valid %>%
-  pivot_wider(names_from = scenario, values_from = cereal_ratio) %>%
-  select(-production, -consumption, -imports, -exports, -MultipleConsumers_2p6) %>%
+  pivot_wider(names_from = scenario, values_from = percent) %>%
+  select(-production, -consumption, -ratio, -MultipleConsumers_2p6) %>%
   rename(`FAO results` = regional_fao_value) %>%
   pivot_longer(cols = c("FAO results", "SingleConsumer", "MultipleConsumers"),
                names_to = "key", values_to = "values")
@@ -2669,7 +2733,7 @@ cereal_fig <- cereal_plot %>%
        title = "Cereal import dependency ratio") +
   theme(axis.text.x = element_text(angle = 90)) ; cereal_fig
 
-ggsave(plot = cereal_fig, filename = "./Validation/figures/cereal_valid.jpg", height = 6, width = 12, units= "in")
+ggsave(plot = cereal_fig, filename = "./Validation/figures/cereal_valid_test.jpg", height = 6, width = 12, units= "in")
 
 ## Share of staples in total ===================================================
 # GCAM vs FAO
@@ -2705,8 +2769,8 @@ ggsave(plot = staples_fig, filename = "./Validation/figures/staples_valid_bar.jp
 
 ## Share of food expenditure of poor ===========================================
 # GCAM vs FAO
-share_poor_plot <- share_poor %>%
-  filter(scenario == "MultipleConsumers", year == 2050) %>%
+share_poor_plot <- food_expenditure_shares %>%
+  filter(scenario == "MultipleConsumers", year == 2020) %>%
   mutate(gcam.consumer = case_when(grepl("1", gcam.consumer) ~ "d1",
                                    grepl("2", gcam.consumer) ~ "d2",
                                    grepl("3", gcam.consumer) ~ "d3",
@@ -2717,7 +2781,7 @@ share_poor_plot <- share_poor %>%
 share_poor_plot$input <- factor(share_poor_plot$input, levels = c("Staples", "NonStaples"))
 
 share_poor_fig <- share_poor_plot %>%
-  ggplot(aes(x = gcam.consumer, y = percent, fill = input)) +
+  ggplot(aes(x = gcam.consumer, y = value * 100, fill = input)) +
   geom_bar(stat = "identity") +
   facet_wrap(~region, scales = "free") +
   scale_fill_manual(values = colors_10) +
@@ -2726,4 +2790,5 @@ share_poor_fig <- share_poor_plot %>%
        y = "Share of food expenditure (%)",
        title = paste0("Share of food expenditure of the poor in ", unique(share_poor_plot$year))) ; share_poor_fig
 
-ggsave(plot = share_poor_fig, filename = "./figures/share_food_exp_poor.jpg", height = 6, width = 12, units= "in")
+ggsave(plot = share_poor_fig, filename = paste0("./figures/share_food_exp_poor_", unique(share_poor_plot$year), ".jpg"), height = 6, width = 12, units= "in")
+
